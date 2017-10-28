@@ -192,7 +192,7 @@ class Decoder(nn.Module):
 
         # Run greedy decoding if inputs is None
         greedy = inputs is None
-        T_decoder = inputs.size(1)
+        T_decoder = inputs.size(1) // self.r
 
         # go frames
         initial_input = Variable(
