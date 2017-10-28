@@ -153,7 +153,7 @@ class Decoder(nn.Module):
         super(Decoder, self).__init__()
         self.in_dim = in_dim
         self.r = r
-        self.prenet = Prenet(in_dim * r, sizes=[256, 128])
+        self.prenet = Prenet(in_dim, sizes=[256, 128])
         # (prenet_out + attention context) -> output
         self.attention_rnn = AttentionWrapper(
             nn.GRUCell(256 + 128, 256),
@@ -192,17 +192,11 @@ class Decoder(nn.Module):
 
         # Run greedy decoding if inputs is None
         greedy = inputs is None
-
-        if inputs is not None:
-            # Grouping multiple frames if necessary
-            if inputs.size(-1) == self.in_dim:
-                inputs = inputs.view(B, inputs.size(1) // self.r, -1)
-            assert inputs.size(-1) == self.in_dim * self.r
-            T_decoder = inputs.size(1)
+        T_decoder = inputs.size(1)
 
         # go frames
         initial_input = Variable(
-            encoder_outputs.data.new(B, self.in_dim * self.r).zero_())
+            encoder_outputs.data.new(B, self.in_dim).zero_())
 
         # Init decoder states
         attention_rnn_hidden = Variable(
@@ -224,7 +218,11 @@ class Decoder(nn.Module):
         current_input = initial_input
         while True:
             if t > 0:
-                current_input = outputs[-1] if greedy else inputs[t - 1]
+                if greedy:
+                    current_input = outputs[-1][:, -self.in_dim:]
+                else:
+                    current_input = inputs[t - 1]
+
             # Prenet
             current_input = self.prenet(current_input)
 
